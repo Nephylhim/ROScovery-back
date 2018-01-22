@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"flag"
 	// "fmt"
+	"crypto/rand"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -15,6 +18,7 @@ import (
 var (
 	mapsDir = flag.String("maps-dir", "maps", "Path to the directory where the maps are located")
 	posDir  = flag.String("pos-dir", "pos", "Path to the directory where the positions are located (with a 'local' folder and a 'global' one within it)")
+	test    = flag.Bool("test", false, "If set, returns random data at each call")
 )
 
 type Coords struct {
@@ -66,6 +70,18 @@ func main() {
 		if robotName == "" {
 			http.Error(w, "Robot name is empty", 400)
 			return
+		}
+
+		if *test {
+			n, err := rand.Int(rand.Reader, big.NewInt(int64(3)))
+			if err != nil {
+				http.Error(w, err.Error(), 500)
+				return
+			}
+
+			if n.Int64() != 0 {
+				robotName = robotName + "-" + strconv.Itoa(int(n.Int64()))
+			}
 		}
 
 		content, err := ioutil.ReadFile(*posDir + "/local/" + robotName + ".yaml")
@@ -123,6 +139,18 @@ func main() {
 			return
 		}
 
+		if *test {
+			n, err := rand.Int(rand.Reader, big.NewInt(int64(3)))
+			if err != nil {
+				http.Error(w, err.Error(), 500)
+				return
+			}
+
+			if n.Int64() != 0 {
+				robotName = robotName + "-" + strconv.Itoa(int(n.Int64()))
+			}
+		}
+
 		content, err := ioutil.ReadFile(*posDir + "/global/" + robotName + ".yaml")
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -166,5 +194,7 @@ func main() {
 		w.Write(content)
 	})
 
-	http.ListenAndServe("0.0.0.0:9090", nil)
+	if err := http.ListenAndServe("0.0.0.0:9090", nil); err != nil {
+		panic(err)
+	}
 }
