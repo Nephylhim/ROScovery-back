@@ -1,0 +1,12 @@
+[Unit]
+Description=API
+After=network.target
+
+[Service]
+User=etudiant
+PermissionsStartOnly=true
+ExecStart=/home/etudiant/api/api --test --maps-dir /home/etudiant/api/maps --pos-dir /home/etudiant/api/pos
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
