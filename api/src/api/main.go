@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/rs/cors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -29,9 +30,10 @@ type Coords struct {
 func main() {
 	flag.Parse()
 
-	http.Handle("/maps/", http.StripPrefix("/maps/", http.FileServer(http.Dir(*mapsDir))))
+	mux := http.NewServeMux()
+	mux.Handle("/maps/", http.StripPrefix("/maps/", http.FileServer(http.Dir(*mapsDir))))
 
-	http.HandleFunc("/robots", func(w http.ResponseWriter, req *http.Request) {
+	mux.HandleFunc("/robots", func(w http.ResponseWriter, req *http.Request) {
 		files := make([]string, 0)
 		fi, err := ioutil.ReadDir(*mapsDir)
 		if err != nil {
@@ -60,7 +62,7 @@ func main() {
 		w.Write(content)
 	})
 
-	http.HandleFunc("/pos/local/", func(w http.ResponseWriter, req *http.Request) {
+	mux.HandleFunc("/pos/local/", func(w http.ResponseWriter, req *http.Request) {
 		var pos struct {
 			Origin   []float64 `yaml:"origin"`
 			Position []float64 `yaml:"position,omitempty"`
@@ -127,7 +129,7 @@ func main() {
 		w.Write(content)
 	})
 
-	http.HandleFunc("/pos/global/", func(w http.ResponseWriter, req *http.Request) {
+	mux.HandleFunc("/pos/global/", func(w http.ResponseWriter, req *http.Request) {
 		var pos struct {
 			Origin   []float64 `yaml:"origin"`
 			Position []float64 `yaml:"position,omitempty"`
@@ -194,7 +196,8 @@ func main() {
 		w.Write(content)
 	})
 
-	if err := http.ListenAndServe("0.0.0.0:9090", nil); err != nil {
+	handler := cors.Default().Handler(mux)
+	if err := http.ListenAndServe("0.0.0.0:9090", handler); err != nil {
 		panic(err)
 	}
 }
