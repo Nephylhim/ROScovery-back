@@ -44,7 +44,8 @@ func main() {
 		for _, file := range fi {
 			filename := file.Name()
 			extension := filepath.Ext(file.Name())
-			if file.Name() != "globale.png" && extension == ".png" {
+			// if file.Name() != "globale.png" && extension == ".png" {
+			if extension == ".png" {
 				files = append(files, filename[0:len(filename)-len(extension)])
 			}
 		}
