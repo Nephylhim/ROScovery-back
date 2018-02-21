@@ -9,14 +9,20 @@ using namespace cv;
 
 // ID : redessiner la forme (long mais précis)
 
+// ligne par ligne, par détection des points d'angle (90° normalement)
+
 
 
 
 //Fonctions necessaires :
+	//redimensionnement		OK
+	//pré-traitement
 	//find features
 	//match features
-	//rotation estimation
-	//image warping
+	//rotation estimation	OK
+	//image warping			OK
+
+	// + sauvegarde image
 
 
 //donne la taille et le type d'une matrice si erreur de lancement a cause des images
@@ -107,11 +113,12 @@ Mat preTraitement(Mat img)
 		if (contours[i].size() > 10)
 		{
 			contoursFinal.push_back(contours[i]);
-
+/*
 			for (unsigned int j = 0; j < contours[i].size(); j++)
 			{
 
 			}
+*/
 		}
 	}
 
@@ -236,7 +243,8 @@ int main(int argc, char **argv)
 		string windowName = "Essai_";
 		windowName += i + '0';
 
-		sprintf(img,"C:/Users/isen/Desktop/Projet ROB/Maps/Brest/map_%d.pgm", i+2);
+		sprintf(img,"./Maps/Brest/map_%d.pgm", i);
+
 		Mat map = imread(img, CV_LOAD_IMAGE_GRAYSCALE);
 
 		imshow(windowName, map);
