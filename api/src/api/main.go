@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -27,6 +28,77 @@ type Coords struct {
 	Y float64 `json:"y"`
 }
 
+type Pos struct {
+	Origin   []float64 `yaml:"origin"`
+	Position []float64 `yaml:"position,omitempty"`
+}
+
+type GlobalPosResp struct {
+	Origin   Coords `json:"origin"`
+	Position Coords `json:"position"`
+}
+
+func getRobotsNames() (robots []string, err error) {
+	robots = make([]string, 0)
+	fi, err := ioutil.ReadDir(*mapsDir)
+	if err != nil {
+		return
+	}
+
+	for _, file := range fi {
+		filename := file.Name()
+		extension := filepath.Ext(file.Name())
+		if file.Name() != "global.png" && extension == ".png" {
+			robots = append(robots, filename[0:len(filename)-len(extension)])
+		}
+	}
+
+	return
+}
+
+func getPosForRobot(robotName string, global bool) (pos Pos, err error) {
+	var n *big.Int
+	var loc string
+
+	if global {
+		loc = "global"
+	} else {
+		loc = "local"
+	}
+
+	filename := robotName
+	if *test {
+		n, err = rand.Int(rand.Reader, big.NewInt(int64(3)))
+		if err != nil {
+			return
+		}
+
+		if n.Int64() != 0 {
+			filename = robotName + "-" + strconv.Itoa(int(n.Int64()))
+		}
+	}
+
+	filePath := path.Join(*posDir, loc, filename+".yaml")
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return
+	}
+
+	if err = yaml.Unmarshal(content, &pos); err != nil {
+		return
+	}
+
+	if len(pos.Origin) == 0 {
+		pos.Origin = []float64{0, 0}
+	}
+
+	if len(pos.Position) == 0 {
+		pos.Position = []float64{0, 0}
+	}
+
+	return
+}
+
 func main() {
 	flag.Parse()
 
@@ -34,26 +106,20 @@ func main() {
 	mux.Handle("/maps/", http.StripPrefix("/maps/", http.FileServer(http.Dir(*mapsDir))))
 
 	mux.HandleFunc("/robots", func(w http.ResponseWriter, req *http.Request) {
-		files := make([]string, 0)
-		fi, err := ioutil.ReadDir(*mapsDir)
+		var resp = struct {
+			Robots []string `json:"robots"`
+		}{
+			Robots: []string{"globale"},
+		}
+
+		robots, err := getRobotsNames()
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
 
-		files = append(files, "globale")
+		resp.Robots = append(resp.Robots, robots...)
 
-		for _, file := range fi {
-			filename := file.Name()
-			extension := filepath.Ext(file.Name())
-			if file.Name() != "globale.png" && extension == ".png" {
-				files = append(files, filename[0:len(filename)-len(extension)])
-			}
-		}
-
-		resp := struct {
-			Robots []string `json:"robots"`
-		}{Robots: files}
 		content, err := json.Marshal(resp)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -65,46 +131,16 @@ func main() {
 	})
 
 	mux.HandleFunc("/pos/local/", func(w http.ResponseWriter, req *http.Request) {
-		var pos struct {
-			Origin   []float64 `yaml:"origin"`
-			Position []float64 `yaml:"position,omitempty"`
-		}
-
 		robotName := strings.TrimPrefix(req.URL.Path, "/pos/local/")
 		if robotName == "" {
 			http.Error(w, "Robot name is empty", 400)
 			return
 		}
 
-		if *test {
-			n, err := rand.Int(rand.Reader, big.NewInt(int64(3)))
-			if err != nil {
-				http.Error(w, err.Error(), 500)
-				return
-			}
-
-			if n.Int64() != 0 {
-				robotName = robotName + "-" + strconv.Itoa(int(n.Int64()))
-			}
-		}
-
-		content, err := ioutil.ReadFile(*posDir + "/local/" + robotName + ".yaml")
+		pos, err := getPosForRobot(robotName, false)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
-		}
-
-		if err = yaml.Unmarshal(content, &pos); err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-
-		if len(pos.Origin) == 0 {
-			pos.Origin = []float64{0, 0}
-		}
-
-		if len(pos.Position) == 0 {
-			pos.Position = []float64{0, 0}
 		}
 
 		resp := struct {
@@ -121,7 +157,7 @@ func main() {
 			},
 		}
 
-		content, err = json.Marshal(resp)
+		content, err := json.Marshal(resp)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -131,64 +167,35 @@ func main() {
 		w.Write(content)
 	})
 
-	mux.HandleFunc("/pos/global/", func(w http.ResponseWriter, req *http.Request) {
-		var pos struct {
-			Origin   []float64 `yaml:"origin"`
-			Position []float64 `yaml:"position,omitempty"`
-		}
+	mux.HandleFunc("/pos/global", func(w http.ResponseWriter, req *http.Request) {
+		var resp = make(map[string]GlobalPosResp)
 
-		robotName := strings.TrimPrefix(req.URL.Path, "/pos/global/")
-		if robotName == "" {
-			http.Error(w, "Robot name is empty", 400)
-			return
-		}
-
-		if *test {
-			n, err := rand.Int(rand.Reader, big.NewInt(int64(3)))
-			if err != nil {
-				http.Error(w, err.Error(), 500)
-				return
-			}
-
-			if n.Int64() != 0 {
-				robotName = robotName + "-" + strconv.Itoa(int(n.Int64()))
-			}
-		}
-
-		content, err := ioutil.ReadFile(*posDir + "/global/" + robotName + ".yaml")
+		robotsNames, err := getRobotsNames()
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
 
-		if err = yaml.Unmarshal(content, &pos); err != nil {
-			http.Error(w, err.Error(), 500)
-			return
+		for _, robotName := range robotsNames {
+			pos, err := getPosForRobot(robotName, true)
+			if err != nil {
+				http.Error(w, err.Error(), 500)
+				return
+			}
+
+			resp[robotName] = GlobalPosResp{
+				Origin: Coords{
+					X: pos.Origin[0],
+					Y: pos.Origin[1],
+				},
+				Position: Coords{
+					X: pos.Position[0],
+					Y: pos.Position[1],
+				},
+			}
 		}
 
-		if len(pos.Origin) == 0 {
-			pos.Origin = []float64{0, 0}
-		}
-
-		if len(pos.Position) == 0 {
-			pos.Position = []float64{0, 0}
-		}
-
-		resp := struct {
-			Origin   Coords `json:"origin"`
-			Position Coords `json:"position"`
-		}{
-			Origin: Coords{
-				X: pos.Origin[0],
-				Y: pos.Origin[1],
-			},
-			Position: Coords{
-				X: pos.Position[0],
-				Y: pos.Position[1],
-			},
-		}
-
-		content, err = json.Marshal(resp)
+		content, err := json.Marshal(resp)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
