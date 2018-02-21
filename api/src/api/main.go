@@ -109,7 +109,7 @@ func main() {
 		var resp = struct {
 			Robots []string `json:"robots"`
 		}{
-			Robots: []string{"globale"},
+			Robots: []string{"global"},
 		}
 
 		robots, err := getRobotsNames()
