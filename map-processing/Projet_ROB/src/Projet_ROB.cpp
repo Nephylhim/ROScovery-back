@@ -1,17 +1,10 @@
 #include <opencv2/opencv.hpp>
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/features2d.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 
 using namespace std;
 using namespace cv;
-
-
-
-// ID : redessiner la forme (long mais précis)
-
-// ligne par ligne, par détection des points d'angle (90° normalement)
-
-
 
 
 //Fonctions necessaires :
@@ -23,6 +16,11 @@ using namespace cv;
 	//image warping			OK
 
 	// + sauvegarde image
+
+
+vector<vector<KeyPoint>> keypointsTotal;
+vector<Mat> descriptorsTotal;
+vector<Mat> maps;
 
 
 //donne la taille et le type d'une matrice si erreur de lancement a cause des images
@@ -52,12 +50,6 @@ string type2str(int type) {
 	//string tx =  type2str( img.type() );
 	//printf("Matrix: %s %dx%d \n", tx.c_str(), img.cols, img.rows );
 }
-
-
-
-vector<vector<KeyPoint>> keypointsTotal;
-vector<Mat> descriptorsTotal;
-vector<Mat> maps;
 
 
 //resize de l'image (x2)
@@ -113,18 +105,22 @@ Mat preTraitement(Mat img)
 		if (contours[i].size() > 10)
 		{
 			contoursFinal.push_back(contours[i]);
-/*
-			for (unsigned int j = 0; j < contours[i].size(); j++)
-			{
-
-			}
-*/
 		}
 	}
 
 	drawContours(imgOut2, contoursFinal, -1, 255, CV_FILLED, 8);
 
-	return imgOut2;
+	Mat imgOut3 = Mat::zeros(img.rows, img.cols, CV_8UC1);
+	Mat imgOut4 = Mat::zeros(img.rows, img.cols, CV_8UC1);
+
+	dilate(imgOut2, imgOut3, Mat(), Point(-1, -1), 3);
+	erode(imgOut3, imgOut4, Mat(), Point(-1, -1), 2);
+
+	imshow ("Test_new", imgOut4);
+	waitKey();
+
+
+	return imgOut4;
 }
 
 
@@ -136,18 +132,40 @@ void featuresFinding(Mat img)
 	vector<KeyPoint> keypoints;
 	Mat descriptors;
 
-	Mat imgout = Mat::zeros(img.rows, img.cols, CV_8UC1);
 
-	detector->detect(img, keypoints);
-	drawKeypoints(img, keypoints, imgout, 125);
+	//	Méthode manuelle (HARRIS corner detection)
 
+	Mat imgOut = Mat::zeros(img.rows, img.cols, CV_8UC1);
+	cornerHarris(img, imgOut, 6, 5, 0.05, BORDER_DEFAULT);
+
+	imgOut.convertTo(imgOut,CV_8UC1, 255.0);
+
+	vector<vector<Point> > contours;
+	findContours(imgOut, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+
+	//Get the moments
+	vector<Moments> mu(contours.size() );
+	for(unsigned int i = 0; i < contours.size(); i++ ) mu[i] = moments( contours[i], false );
+
+	//Get the mass centers
+	vector<Point2f> centre;
+	for(unsigned int i = 0; i < contours.size(); i++ ) centre.push_back(Point2f( mu[i].m10/mu[i].m00 , mu[i].m01/mu[i].m00));
+
+	for(unsigned int i = 0; i < centre.size(); i++) {
+		keypoints.push_back(KeyPoint(centre[i], 4, -1, 0, 0, -1));
+	}
+
+	drawKeypoints(img, keypoints, img, 125);
 	detector->compute(img, keypoints, descriptors);
 
 	keypointsTotal.push_back(keypoints);
 	descriptorsTotal.push_back(descriptors);
 
-//imshow("Test", imgout);
-//waitKey();
+//cout << keypoints.size() << endl;
+
+	imshow("Manu", img);
+	waitKey();
+
 }
 
 
@@ -181,6 +199,20 @@ cout << "Matches size : " << matches.size() << endl;
 cout << "Good Matches size : " << good_matches.size() << endl;
 //cout << keypointsTotal[0].size() << endl << keypointsTotal[1].size() << endl;
 
+/*
+	sort(matches.begin(), matches.end());
+
+	//Draw first 5 matches
+	vector< DMatch > good_matches;
+	for (int i = 0; i < 5; i++)
+	{
+		good_matches.push_back(matches[i]);
+	}
+
+	Mat imgout;
+	drawMatches(maps[1], keypointsTotal[1], maps[0], keypointsTotal[0], good_matches, imgout);
+*/
+
 	Mat imgout;
 	drawMatches(maps[1], keypointsTotal[1], maps[0], keypointsTotal[0], good_matches, imgout);
 
@@ -202,6 +234,9 @@ Mat rotationEstimation(vector< DMatch > good_matches)
 		pt_img2.push_back(keypointsTotal[1][ good_matches[i].trainIdx ].pt );
 	}
 	Mat H = findHomography( pt_img1, pt_img2, CV_RANSAC );
+
+cout << pt_img1.size() << " " << pt_img2.size() << endl;
+cout << H.size() << endl;
 
 	return H;
 }
@@ -226,7 +261,7 @@ void imagesWarping(Mat H)
 
 /* Methode finale necessaire:
 ** 1- ouverture de deux images
-** 2- elimination des pixels de bruit (+ dessin propre des contours ?)
+** 2- elimination des pixels de bruit
 ** 3- determination des points d'interet des deux images
 ** 4- matching des points d'interet communs
 ** 5- estimation de la rotation (homographie)
@@ -243,7 +278,7 @@ int main(int argc, char **argv)
 		string windowName = "Essai_";
 		windowName += i + '0';
 
-		sprintf(img,"./Maps/Brest/map_%d.pgm", i);
+		sprintf(img,"./Maps/Brest/map_%d.pgm", i+2);
 
 		Mat map = imread(img, CV_LOAD_IMAGE_GRAYSCALE);
 
@@ -255,21 +290,25 @@ int main(int argc, char **argv)
 
 		map = preTraitement(map);
 
-		imshow(windowName, map);
+		//imshow(windowName, map);
 
 		maps.push_back(map);
 
 		featuresFinding(map);
+
 	}
 
 	vector< DMatch > good_matches = featuresMatching(maps);
 
-	if (good_matches.size() > 100)
-	{
+//	if (good_matches.size() > 50)
+//	{
 		Mat H = rotationEstimation(good_matches);
 
-		imagesWarping(H);
-	}
+		//string tx =  type2str( H.type() );
+		//printf("Matrix: %s %dx%d \n", tx.c_str(), H.cols, H.rows );
+
+		//imagesWarping(H);
+//	}
 
 	waitKey(0);
 	return 0;
