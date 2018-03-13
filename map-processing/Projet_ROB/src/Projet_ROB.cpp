@@ -32,8 +32,7 @@ using namespace cv;
 ** BONUS : rectification de la distortion de certaines images (capteurs mal calibres)
 */
 
-int main(int argc, char **argv)
-{
+void test1(){
 	vector<vector<KeyPoint>> keypointsTotal;
 	vector<KeyPoint> newKeypoints;
 	vector<Mat> descriptorsTotal;
@@ -74,14 +73,20 @@ int main(int argc, char **argv)
 
 //	if (good_matches.size() > 50)
 //	{
-		Mat H = rotationEstimation(good_matches, keypointsTotal);
+	Mat H = rotationEstimation(good_matches, keypointsTotal);
 
-		//string tx =  type2str( H.type() );
-		//printf("Matrix: %s %dx%d \n", tx.c_str(), H.cols, H.rows );
+	//string tx =  type2str( H.type() );
+	//printf("Matrix: %s %dx%d \n", tx.c_str(), H.cols, H.rows );
 
-		//imagesWarping(H);
+	//imagesWarping(H);
 //	}
 
 	waitKey(0);
+}
+
+int main(int argc, char **argv)
+{
+	test1();
+
 	return 0;
 }
