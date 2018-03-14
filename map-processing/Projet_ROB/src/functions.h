@@ -11,6 +11,7 @@ using namespace cv;
 
 string type2str(int type);
 Mat redimensionnement(Mat img);
+Mat mapTobinary(Mat img);
 Mat preTraitement(Mat img);
 vector<KeyPoint> featuresFinding(Mat img);
 Mat descriptorsFinding(Mat map, vector<KeyPoint> keypoints);

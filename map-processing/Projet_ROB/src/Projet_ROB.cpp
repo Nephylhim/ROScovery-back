@@ -11,7 +11,7 @@ using namespace cv;
 
 //Fonctions necessaires :
 	//redimensionnement		OK
-	//pré-traitement
+	//prï¿½-traitement
 	//find features
 	//match features
 	//rotation estimation	OK
@@ -84,9 +84,44 @@ void test1(){
 	waitKey(0);
 }
 
+
+void test2(){
+	vector<string> mapPaths = {"./Maps/Brest/map_3.pgm", "./Maps/Brest/map_4.pgm"};
+	vector<Mat> maps;
+
+	for(int i=0; i < mapPaths.size(); i++){
+		maps.push_back(imread(mapPaths[i], CV_LOAD_IMAGE_GRAYSCALE));
+
+		maps[i] = redimensionnement(maps[i]);
+		// maps[i] = mapTobinary(maps[i]);
+		threshold(maps[i], maps[i], 70, 255, CV_THRESH_BINARY_INV);
+		imshow("i "+to_string(i), maps[i]);
+
+		//--------------------------------------------------//
+		morphologyEx(maps[i], maps[i], MORPH_CLOSE, Mat::ones(3, 3, CV_8UC1), Point(-1, -1), 2);
+
+		dilate(maps[i], maps[i], Mat(), Point(-1, -1), 1.5);
+		GaussianBlur(maps[i], maps[i], Size(3, 3), 3, 3);
+		erode(maps[i], maps[i], Mat(), Point(-1, -1), 2);
+
+		threshold(maps[i], maps[i], 70, 255, CV_THRESH_BINARY);
+
+		dilate(maps[i], maps[i], Mat(), Point(-1, -1), 2.0);
+		GaussianBlur(maps[i], maps[i], Size(3, 3), 3, 3);
+		erode(maps[i], maps[i], Mat(), Point(-1, -1), 2);
+		threshold(maps[i], maps[i], 70, 255, CV_THRESH_BINARY);
+
+		imshow("it "+to_string(i), maps[i]);
+	}
+
+	
+	waitKey(0);
+}
+
 int main(int argc, char **argv)
 {
-	test1();
+//	test1();
+	test2();
 
 	return 0;
 }

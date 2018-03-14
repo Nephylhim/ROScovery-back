@@ -62,6 +62,21 @@ Mat redimensionnement(Mat img)
 	return croppedImage;
 }
 
+Mat mapTobinary(Mat img){
+	Mat imgOut = Mat::zeros(img.rows, img.cols, CV_8UC1);
+
+	for (int j = 0; j < img.cols; j++)
+	{
+		for (int i = 0; i < img.rows; i++)
+		{
+			if ((int)img.at<unsigned char>(i, j) == 0) imgOut.at<unsigned char>(i, j) = 0;
+			else imgOut.at<unsigned char>(i, j) = 255;
+		}
+	}
+
+	return imgOut;
+}
+
 
 //elimine les bruits de l'image
 Mat preTraitement(Mat img)
