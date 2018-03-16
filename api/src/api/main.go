@@ -1,13 +1,16 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"flag"
-	// "fmt"
-	"crypto/rand"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -203,6 +206,95 @@ func main() {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(content)
+	})
+
+	mux.HandleFunc("/map/", func(w http.ResponseWriter, req *http.Request) {
+		robotName := strings.TrimPrefix(req.URL.Path, "/map/")
+		if robotName == "" {
+			http.Error(w, "Robot name is empty", 400)
+			return
+		}
+
+		if req.Method != "POST" {
+			http.Error(w, "Unsupported method, use POST instead", 400)
+			return
+		}
+
+		req.ParseMultipartForm(32 << 20)
+		file, handler, err := req.FormFile("map")
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer file.Close()
+
+		ext := filepath.Ext(handler.Filename)
+		if ext != ".png" && ext != ".pgm" {
+			http.Error(w, "Unsupported file extenstion "+ext, 400)
+			return
+		}
+
+		destPath := filepath.Join(*mapsDir, "raw", robotName+ext)
+		if err = os.Remove(destPath); err != nil && !strings.Contains(err.Error(), "no such file or directory") {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		f, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE, 0666)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer f.Close()
+		io.Copy(f, file)
+
+		cmd := exec.Command(
+			"convert",
+			filepath.Join(*mapsDir, "raw", robotName+ext),
+			filepath.Join(*mapsDir, robotName+".png"),
+		)
+		if output, err := cmd.Output(); err != nil {
+			http.Error(w, fmt.Sprintf("%v: %s", err, string(output)), 500)
+		}
+	})
+
+	mux.HandleFunc("/pos/", func(w http.ResponseWriter, req *http.Request) {
+		robotName := strings.TrimPrefix(req.URL.Path, "/pos/")
+		if robotName == "" {
+			http.Error(w, "Robot name is empty", 400)
+			return
+		}
+
+		if req.Method != "POST" {
+			http.Error(w, "Unsupported method, use POST instead", 400)
+			return
+		}
+
+		req.ParseMultipartForm(32 << 20)
+		file, handler, err := req.FormFile("pos")
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer file.Close()
+
+		ext := filepath.Ext(handler.Filename)
+		if ext != ".yml" && ext != ".yaml" {
+			http.Error(w, "Unsupported file extenstion "+ext, 400)
+			return
+		}
+
+		destPath := filepath.Join(*posDir, "local", robotName+".yaml")
+		if err = os.Remove(destPath); err != nil && !strings.Contains(err.Error(), "no such file or directory") {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		f, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE, 0666)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer f.Close()
+		io.Copy(f, file)
 	})
 
 	handler := cors.Default().Handler(mux)
