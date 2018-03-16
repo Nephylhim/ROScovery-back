@@ -32,13 +32,21 @@ type Coords struct {
 }
 
 type Pos struct {
-	Origin   []float64 `yaml:"origin"`
-	Position []float64 `yaml:"position,omitempty"`
+	Origin         []float64 `yaml:"origin"`
+	Position       []float64 `yaml:"position,omitempty"`
+	Resolution     float64   `yaml:"resolution"`
+	Negate         float64   `yaml:"negate"`
+	OccupiedThresh float64   `yaml:"occupied_thresh"`
+	FreeThresh     float64   `yaml:"free_thresh"`
 }
 
 type GlobalPosResp struct {
-	Origin   Coords `json:"origin"`
-	Position Coords `json:"position"`
+	Origin         Coords  `json:"origin"`
+	Position       Coords  `json:"position"`
+	Resolution     float64 `json:"resolution"`
+	Negate         float64 `json:"negate"`
+	OccupiedThresh float64 `json:"occupiedThresh"`
+	FreeThresh     float64 `json:"freeThresh"`
 }
 
 func getRobotsNames() (robots []string, err error) {
@@ -147,8 +155,12 @@ func main() {
 		}
 
 		resp := struct {
-			Origin   Coords `json:"origin"`
-			Position Coords `json:"position"`
+			Origin         Coords  `json:"origin"`
+			Position       Coords  `json:"position"`
+			Resolution     float64 `json:"resolution"`
+			Negate         float64 `json:"negate"`
+			OccupiedThresh float64 `json:"occupiedThresh"`
+			FreeThresh     float64 `json:"freeThresh"`
 		}{
 			Origin: Coords{
 				X: pos.Origin[0],
@@ -158,6 +170,10 @@ func main() {
 				X: pos.Position[0],
 				Y: pos.Position[1],
 			},
+			Resolution:     pos.Resolution,
+			Negate:         pos.Negate,
+			OccupiedThresh: pos.OccupiedThresh,
+			FreeThresh:     pos.OccupiedThresh,
 		}
 
 		content, err := json.Marshal(resp)
@@ -185,7 +201,6 @@ func main() {
 				http.Error(w, err.Error(), 500)
 				return
 			}
-
 			resp[robotName] = GlobalPosResp{
 				Origin: Coords{
 					X: pos.Origin[0],
@@ -195,6 +210,10 @@ func main() {
 					X: pos.Position[0],
 					Y: pos.Position[1],
 				},
+				Resolution:     pos.Resolution,
+				Negate:         pos.Negate,
+				OccupiedThresh: pos.OccupiedThresh,
+				FreeThresh:     pos.OccupiedThresh,
 			}
 		}
 
