@@ -10,13 +10,13 @@ using namespace std;
 using namespace cv;
 
 
-void demoUnRobot()
+void demoUnRobot(char **argv)
 {
 	//string mapPath = "./maps/raw/WALL-E.pgm";
 	//string yamlPath = "./pos/local/WALL-E.yaml";
 
-	string mapPath = "./Maps/grandesMaps/my_map3.pgm";
-	string yamlPath = "./Maps/grandesMaps/my_map3.yaml";
+	string mapPath = argv[1];
+	string yamlPath = argv[2];
 
 	Mat map = {imread(mapPath, CV_LOAD_IMAGE_GRAYSCALE)};
 
@@ -57,7 +57,7 @@ void demoUnRobot()
 	//waitKey();
 
 	//imwrite( "./Maps/grandesMaps/my_map3.png", map);
-	imwrite( "./maps/raw/WALL-E.png", map);
+	imwrite( argv[3], map);
 }
 
 
@@ -76,7 +76,7 @@ void demoUnRobot()
 
 int main(int argc, char **argv)
 {
-	demoUnRobot();
+	demoUnRobot(argv);
 
 	return 0;
 }
